@@ -3,7 +3,6 @@ from django.shortcuts import render, get_object_or_404, redirect
 from .models import *
 from accounts.models import Account
 from django.core.paginator import Paginator
-import sqlite3
 from django.db import transaction
 from django.views.decorators.http import require_http_methods
 from transliterate import translit
@@ -11,26 +10,24 @@ from carts_app.models import CartItem
 from carts_app.views import _cart_id
 from django.db.models import Q
 from django.views.decorators.http import require_POST
-import sqlite3 as sql
 from django.contrib.auth.models import User
-from .form import *
+from .forms import *  # corrected import statement for forms
 from django.core.files.storage import FileSystemStorage
-from .models import *
-from django.contrib import messages
-from .form import DriverForm, TrailerForm, TrailerFileForm, ApplicationForm
-from .models import Product, ImageGallery, User_Request,UserRequest_Truck
+from .models import Product, ImageGallery, User_Request, UserRequest_Truck
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
+import sqlite3 as sql
 
 current_datetime = datetime.now()
 formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S.%f")
 
+# View to add news
 def add_news(request):
     if request.method == 'POST':
         title = request.POST['title']
         description = request.POST['description']
         image = request.FILES['image']
-    
+        
         fs = FileSystemStorage()
         filename = fs.save(image.name, image)
         image_url = fs.url(filename)
@@ -38,16 +35,18 @@ def add_news(request):
         news = News(title=title, description=description, image=filename)
         news.save()
         
-        return redirect('a')
+        return redirect('a')  # Assuming 'a' is a valid redirect URL
     
     return render(request, 'admin/add_news.html')
 
-def handle_upload(a_img, name):
-    if a_img:
+# Helper function to handle file uploads
+def handle_upload(file, name):
+    if file:
         with open(name, 'wb+') as destination:
-            for chunk in a_img.chunks():
+            for chunk in file.chunks():
                 destination.write(chunk)
 
+# Index view
 def index(request):
     categories = Category.objects.all()
     products = Product.objects.filter(is_available=True).order_by('-id')[:8]
@@ -57,18 +56,23 @@ def index(request):
     }
     return render(request, "index.html", context)
 
+# Base view
 def base(request):
     return render(request, "base.html")
 
+# Dashboard view
 def dashboard(request):
     return render(request, "dashboard.html")
 
+# Order complete view
 def order_complete(request):
     return render(request, "order_complete.html")
 
+# Place order view
 def place_order(request):
     return render(request, "place-order.html")
 
+# Product detail view
 @login_required
 @require_http_methods(["GET", "POST"])
 def product_detail(request, category_slug, product_slug):
@@ -81,6 +85,7 @@ def product_detail(request, category_slug, product_slug):
     application_form = ApplicationForm(request.POST or None, prefix="application")
 
     if request.method == 'POST':
+        # Handling form data and file uploads
         dname = request.POST.get('dname')
         dpass = request.POST.get('dpassport')
         dletsence = request.POST.get('dletsence')
@@ -96,9 +101,10 @@ def product_detail(request, category_slug, product_slug):
         url2 = f'static/images/{crd}.jpg'
         handle_upload(cimg, url2)
 
+        # Saving data to database
         user_request = User_Request(dname=dname, dpass=dpass, dletsence=dletsence, url1=url1)
         user_request.save()
-        user_request = UserRequest_Truck(crd=crd, ctype=ctype, cedangi=cedangi,cmadename=cmadename,ccefno=ccefno,url2=url2,dpass=dpass)
+        user_request = UserRequest_Truck(crd=crd, ctype=ctype, cedangi=cedangi, cmadename=cmadename, ccefno=ccefno, url2=url2, dpass=dpass)
         user_request.save()
 
     context = {
@@ -112,18 +118,22 @@ def product_detail(request, category_slug, product_slug):
     
     return render(request, 'product-detail.html', context)
 
+# News view
 def news(request):
     news_items = News.objects.all().order_by('-created_date')
-    return render(request,'store/news.html',{'news_items': news_items})
+    return render(request, 'store/news.html', {'news_items': news_items})
 
+# Admin user view
 def admin_user(request):
     news_items = Account.objects.all()
-    return render(request,'admin/user.html',{'news_items': news_items})
+    return render(request, 'admin/user.html', {'news_items': news_items})
 
+# Admin category view
 def admin_category(request):
     news_items = Category.objects.all().order_by('-created_date')
-    return render(request,'admin/category.html',{'news_items': news_items})
+    return render(request, 'admin/category.html', {'news_items': news_items})
 
+# Admin zar view
 def admin_zar(request):
     news_items = Product.objects.all()
     if request.method == "POST":
@@ -136,59 +146,59 @@ def admin_zar(request):
         slug = text_slug.replace(" ", "")
         url = f'media/photos/products/{slug}.jpg'
         handle_upload(zimg, url)
+        
+        # Inserting data into database using raw SQL
         with sql.connect('db.sqlite3') as con:
             cur = con.cursor()
-            cur.execute("INSERT INTO 'store_app_product' (product_name, slug, description, price, images,stock,is_available,created_date,modified_date,category_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (zname, slug, desc, price, url, 1, 0, formatted_datetime, 0, ztype))
+            cur.execute("INSERT INTO 'store_app_product' (product_name, slug, description, price, images, stock, is_available, created_date, modified_date, category_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (zname, slug, desc, price, url, 1, 0, formatted_datetime, 0, ztype))
             con.commit()
-    return render(request,'admin/zar.html',{'news_items': news_items})
+    return render(request, 'admin/zar.html', {'news_items': news_items})
 
+# Admin request view
 def admin_request(request):
     user_items = User_Request.objects.all()
     news_items = user_items
     truck = UserRequest_Truck.objects.all()
-    return render(request,'admin/request.html',{'news_items': news_items,'context':truck})
+    return render(request, 'admin/request.html', {'news_items': news_items, 'context': truck})
 
+# About view
 def about(request):
-    return render(request,'store/about.html')
+    return render(request, 'store/about.html')
 
+# A view
 def a(request):
-    return render(request,'admin/a.html')
+    return render(request, 'admin/a.html')
 
+# Search result view
 def search_result(request):
     return render(request, "search-result.html")
 
-def store(request, category_slug = None):
+# Store view
+def store(request, category_slug=None):
     categories = None
     products = None
-    if category_slug != None:
+    if category_slug:
         categories = get_object_or_404(Category, slug=category_slug)
-        products = Product.objects.filter(category = categories)
-        count=products.count()
-        p=Paginator(products, 2)
-        page = request.GET.get("page")
-        paged_products = p.get_page(page)
-    elif category_slug is None:
-        products = Product.objects.filter(is_available = True)
-        count=products.count()
-        p=Paginator(products, 2)
-        page = request.GET.get("page")
-        paged_products = p.get_page(page)
+        products = Product.objects.filter(category=categories)
     else:
-        categories = Category.objects.all()
-        products = Product.objects.filter(category = categories)
-        count=products.count()
-        p=Paginator(products, 2)
-        page = request.GET.get("page")
-        paged_products = p.get_page(page)
+        products = Product.objects.filter(is_available=True)
+    
+    count = products.count()
+    paginator = Paginator(products, 2)
+    page_number = request.GET.get('page')
+    paged_products = paginator.get_page(page_number)
+    
     context = {
         'products': paged_products,
         'categories': categories,
         'count': count
     }
-    return render(request, "store/store.html", context) 
+    return render(request, "store/store.html", context)
+
+# Home view
 def home(request):
     categories = Category.objects.all()
-    con  = sqlite3.connect('db.sqlite3')
+    con = sql.connect('db.sqlite3')
     cur = con.cursor()
     cur.execute("SELECT * FROM store_app_product")
     row = cur.fetchall()
@@ -201,6 +211,8 @@ def home(request):
         'size': size,
     }
     return render(request, "home.html", context)
+
+# Search view
 def search(request):
     keyword = request.GET.get('keyword', '')
     min_price = request.GET.get('min_price')
@@ -229,15 +241,16 @@ def search(request):
     }
     return render(request, 'store/store.html', context)
 
+# Admin index view
 def admin_index(request):
-    application = Application.objects.all()
+    applications = Application.objects.all()
     ctx = {
-        "applications": application
+        "applications": applications
     }
     print(ctx)
     return render(request, 'admin/admin.html', ctx)
 
-
+# Update applications view
 @require_POST
 def update_applications(request):
     applications = Application.objects.all()
