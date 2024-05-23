@@ -219,9 +219,9 @@ def search(request):
     max_price = request.GET.get('max_price')
 
     if min_price:
-        min_price = float(min_price.replace(',', '.'))
+        min_price = int(min_price.replace(',', '.'))
     if max_price:
-        max_price = float(max_price.replace(',', '.'))
+        max_price = int(max_price.replace(',', '.'))
 
     product_query = Q(product_name__icontains=keyword) | Q(description__icontains=keyword)
 
