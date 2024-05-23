@@ -11,7 +11,7 @@ from carts_app.views import _cart_id
 from django.db.models import Q
 from django.views.decorators.http import require_POST
 from django.contrib.auth.models import User
-from .forms import *  # corrected import statement for forms
+from .form import *
 from django.core.files.storage import FileSystemStorage
 from .models import Product, ImageGallery, User_Request, UserRequest_Truck
 from django.contrib.auth.decorators import login_required
